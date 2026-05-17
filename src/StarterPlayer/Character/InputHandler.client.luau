@@ -1,15 +1,13 @@
 local character = script.Parent
 local MSC = require(character:WaitForChild("MovementStateController"))
 
-MSC.init()
-
 local UIS = game:GetService("UserInputService")
 
 local movementKeys = {
   [Enum.KeyCode.W] = true,
 	[Enum.KeyCode.A] = true,
 	[Enum.KeyCode.S] = true,
-	[Enum.KeyCode.D] = true
+	[Enum.KeyCode.D] = true,
 }
 
 local heldKeys = {}
@@ -19,19 +17,30 @@ local states = MSC.getStates()
 UIS.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
+	local key = input.KeyCode
+
   local state = MSC.getCurrentState()
 
-	if movementKeys[input.KeyCode] then
-    heldKeys[input.KeyCode] = true
+	if movementKeys[key] then
+    heldKeys[key] = true
 
     if state == states.Idle or state == states.Walking then
       MSC.setState(MSC.getStates().Walking)
     end
   end
 
-	if input.KeyCode == Enum.KeyCode.LeftShift then
+	if key == Enum.KeyCode.LeftShift then
 		MSC.setState(MSC.getStates().Sprinting)
 	end
+
+	if key == Enum.KeyCode.C then
+		if state == states.Sprinting then
+			MSC.setState(MSC.getStates().Sliding)
+		elseif state == states.Walking or state == states.Idle then
+			MSC.setState(MSC.getStates().Crouching)
+		end
+	end
+
 end)
 
 local function isStillMoving()
@@ -47,6 +56,7 @@ UIS.InputEnded:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
 	local key = input.KeyCode
+	local state = MSC.getCurrentState()
 
 	-- remove movement key first (if it is one)
 	if movementKeys[key] then
@@ -60,10 +70,22 @@ UIS.InputEnded:Connect(function(input, gameProcessed)
 
 	-- shift logic
 	if key == Enum.KeyCode.LeftShift then
-		if isStillMoving() then
-			MSC.setState(MSC.getStates().Walking)
-		else
-			MSC.setState(MSC.getStates().Idle)
-		end
+    if state ~= states.Sliding and state ~= states.Crouching then
+        if isStillMoving() then
+            MSC.setState(states.Walking)
+        else
+            MSC.setState(states.Idle)
+        end
+    end
+	end
+
+	if key == Enum.KeyCode.C then
+    if state == states.Crouching or state == states.Sliding then
+        if isStillMoving() then
+            MSC.setState(states.Walking)
+        else
+            MSC.setState(states.Idle)
+        end
+    end
 	end
 end)
